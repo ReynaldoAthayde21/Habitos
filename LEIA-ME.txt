@@ -1,0 +1,32 @@
+HÁBITOS: como instalar no iPhone e no iPad
+==========================================
+
+O app é um site que vira ícone na Tela de Início. O código fica num endereço
+gratuito, e todos os dados (registros, fotos, PDF) ficam só no aparelho.
+
+1) Publicar a pasta (uma vez, de um computador)
+   Opção A: Netlify Drop
+   - Acesse https://app.netlify.com/drop, crie uma conta grátis e arraste a pasta "habitos".
+   - Copie o endereço gerado (ex.: https://nome-qualquer.netlify.app).
+   Opção B: GitHub Pages
+   - Crie um repositório, envie todos os arquivos desta pasta (Add file > Upload files).
+   - Settings > Pages > Branch: main > Save. O endereço aparece ali em 1 ou 2 minutos.
+
+2) Instalar no iPhone (e repetir no iPad)
+   - Abra o endereço no Safari.
+   - Toque em Compartilhar > "Adicionar à Tela de Início".
+   - Use sempre o app pelo ícone: assim o iOS guarda os dados de forma permanente.
+
+3) Primeiro uso
+   - Crie a senha de 4 números.
+   - Refeições > Editar plano > "Enviar PDF do plano": o app lê o PDF e monta um
+     rascunho com as refeições e opções. Revise e toque em "Aplicar plano".
+
+Importante
+- iPhone e iPad têm dados separados (não há nuvem). Para levar os dados de um para
+  o outro, use Ajustes > Exportar backup e depois Importar backup no outro aparelho.
+- Faça backup de vez em quando e guarde o arquivo no app Arquivos.
+- Se mudar o app de endereço, os dados não acompanham: exporte o backup antes.
+- Esqueceu a senha? Só dá para recuperar apagando os dados do app e importando um backup.
+
+Novos hábitos no futuro: criar um arquivo em js/habits/ e registrar em js/habits/index.js.
