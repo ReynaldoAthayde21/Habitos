@@ -8,5 +8,6 @@ import water from './water.js';
 import workout from './workout.js';
 import reading from './reading.js';
 import body from './body.js';
+import nutri from './nutri.js';
 
-export const HABITS = [meals, water, workout, reading, body];
+export const HABITS = [meals, water, workout, reading, body, nutri];

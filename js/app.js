@@ -7,10 +7,11 @@ import history from './views/history.js';
 import evolution from './views/evolution.js';
 import settings from './views/settings.js';
 import lock from './views/lock.js';
+import profile, { avatarHTML } from './views/profile.js';
 
 // Abas na ordem pedida. Para um novo hábito: criar o arquivo em js/habits/ e registrar em habits/index.js.
 const VIEWS = [today, ...HABITS.filter(h => h.tab !== false), history, evolution];
-const ALL = [...VIEWS, settings, lock];
+const ALL = [...VIEWS, settings, profile, lock];
 
 const ctx = {
   state: null,
@@ -26,6 +27,7 @@ function defaults(s) {
   s.version = 1;
   s.settings = s.settings || { pin: null, lockAfterSec: 30, onboarded: false };
   s.settings.since = s.settings.since || todayKey();
+  s.profile = s.profile || {};
   for (const h of HABITS) h.defaults && h.defaults(s);
   return s;
 }
@@ -74,6 +76,10 @@ ctx.render = () => {
   main.innerHTML = v.renderTab ? v.renderTab(ctx) : v.render(ctx);
   main.dataset.view = v.tabId || v.id;
   renderTabs();
+  const av = document.getElementById('avatar');
+  av.innerHTML = avatarHTML(ctx.state);
+  av.classList.toggle('on', ctx.ui.tab === 'perfil');
+  hydratePhotos(av);
   hydratePhotos(main);
   const sh = document.getElementById('sheet');
   if (sh.classList.contains('open') && sh._render) {
@@ -175,6 +181,7 @@ const appActions = {
   closesheet: () => ctx.closeSheet(false),
   confirmok: () => ctx.closeSheet(true),
   settings: () => ctx.go('ajustes'),
+  profile: () => ctx.go('perfil'),
   viewphoto: async (el) => {
     const id = el.dataset.id, del = el.dataset.del;
     ctx.sheet(`<div class="viewer"><img data-photo="${id}" alt=""></div>

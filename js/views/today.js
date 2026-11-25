@@ -1,5 +1,5 @@
 // Tela inicial: checks do dia.
-import { ring, todayKey } from '../util.js';
+import { ring, todayKey, esc } from '../util.js';
 
 const FRASES = ['Um dia de cada vez 🌷', 'Você está indo muito bem 💖', 'Pequenos passos, grandes mudanças ✨', 'Cuide de você hoje 🌸', 'Constância é tudo 💪', 'Orgulho de você 🫶'];
 
@@ -14,7 +14,7 @@ export default {
     return `${ctx.dateNav()}
     <div class="card hero">
       ${ring(p, { size: 96, stroke: 11, color: 'var(--pink-d)' })}
-      <div><b class="hero-n">${done} de ${total} checks</b><p class="muted small">${d === todayKey() ? frase : 'Completando um dia anterior'}</p></div>
+      <div><b class="hero-n">${done} de ${total} checks</b><p class="muted small">${d === todayKey() ? (ctx.state.profile.name ? `Oi, ${esc(ctx.state.profile.name.split(' ')[0])}! ` : '') + frase : 'Completando um dia anterior'}</p></div>
     </div>
     <div class="today-grid">${ctx.habits.map(h => (h.renderToday ? h.renderToday(ctx, d) : '')).join('')}</div>`;
   },

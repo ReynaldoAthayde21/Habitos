@@ -1,5 +1,5 @@
 // Service worker: guarda o app no aparelho para abrir sem internet.
-const VERSION = 'habitos-v2';
+const VERSION = 'habitos-v3';
 const FILES = [
   './',
   "css/app.css",
@@ -11,6 +11,7 @@ const FILES = [
   "js/habits/body.js",
   "js/habits/index.js",
   "js/habits/meals.js",
+  "js/habits/nutri.js",
   "js/habits/reading.js",
   "js/habits/water.js",
   "js/habits/workout.js",
@@ -20,6 +21,7 @@ const FILES = [
   "js/views/evolution.js",
   "js/views/history.js",
   "js/views/lock.js",
+  "js/views/profile.js",
   "js/views/settings.js",
   "js/views/today.js",
   "manifest.webmanifest",
