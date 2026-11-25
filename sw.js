@@ -1,5 +1,5 @@
 // Service worker: guarda o app no aparelho para abrir sem internet.
-const VERSION = 'habitos-v1';
+const VERSION = 'habitos-v2';
 const FILES = [
   './',
   "css/app.css",

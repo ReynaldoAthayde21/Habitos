@@ -21,7 +21,9 @@ function examplePlan() {
 
 const active = s => s.plan.meals.filter(m => !m.archived);
 const entry = (s, date, mid) => (s.mealLog[date] || {})[mid] || null;
-const isDone = e => !!(e && ((e.opts && e.opts.length) || e.free));
+const isDone = e => !!(e && ((e.opts && e.opts.length) || e.other || e.free));
+// texto do que foi comido: opções marcadas + "outro"
+const eaten = (s, e) => [...e.opts.map(o => findOpt(s, o)?.name).filter(Boolean), ...(e.other ? [e.other] : [])].join(' + ');
 function ensure(s, date, mid) {
   s.mealLog[date] = s.mealLog[date] || {};
   s.mealLog[date][mid] = s.mealLog[date][mid] || { opts: [], free: '', photo: null };
@@ -43,7 +45,7 @@ function monthStats(s, ym) {
     const log = s.mealLog[d]; if (!log) continue;
     for (const e of Object.values(log)) {
       if (e.free) { free++; frees.push({ d, name: e.free }); }
-      else if (e.opts && e.opts.length) plan++;
+      else if ((e.opts && e.opts.length) || e.other) plan++;
     }
   }
   return { plan, free, total: plan + free, frees };
@@ -66,32 +68,25 @@ function mealCard(ctx, meal, date) {
       return `<div class="opt-group"><div class="opt-label">${label}</div><div class="chips">${list.map(o =>
         `<button class="chip ${e && e.opts.includes(o.id) ? 'on' : ''}" data-act="meals:toggle" data-m="${meal.id}" data-o="${o.id}">${esc(o.name)}</button>`).join('')}</div></div>`;
     };
-    body = (group('principal', 'Principal') + group('acomp', 'Acompanhamento')) || `<p class="muted small">Sem opções. Edite o plano para adicionar.</p>`;
+    body = (group('principal', 'Principal') + group('acomp', 'Acompanhamento')) || `<p class="muted small">Sem opções ainda. Toque no ✏️ para adicionar.</p>`;
+    body += `<div class="chips other-line">${e && e.other
+      ? `<button class="chip on" data-act="meals:other" data-m="${meal.id}">Outro: ${esc(e.other)}</button>`
+      : `<button class="chip dashed" data-act="meals:other" data-m="${meal.id}">＋ Outro</button>`}</div>`;
     body += `<button class="link-btn" data-act="meals:free" data-m="${meal.id}">🍔 Foi uma refeição livre</button>`;
   }
   return `<div class="card meal ${done ? 'done' : ''}">
-    <div class="card-h"><span class="ce">${meal.emoji || '🍽️'}</span><b>${esc(meal.name)}</b><span class="check ${done ? 'on' : ''}">${done ? '✓' : ''}</span></div>
+    <div class="card-h"><span class="ce">${meal.emoji || '🍽️'}</span><b>${esc(meal.name)}</b>
+      <button class="icon-btn pencil" data-act="meals:editmeal" data-m="${meal.id}" aria-label="Editar opções de ${esc(meal.name)}">✏️</button>
+      <span class="check ${done ? 'on' : ''}">${done ? '✓' : ''}</span></div>
     <div class="meal-body"><div class="meal-opts">${body}</div>
     <div class="meal-photo">${ctx.photoSlot(e && e.photo, 'meals:photo', `data-m="${meal.id}"`)}</div></div>
   </div>`;
 }
 
 // ---------- editor do plano ----------
-function planEditor(ctx) {
-  const s = ctx.state;
-  const meals = active(s);
-  return `<div class="subhead"><button class="btn small ghost" data-act="meals:closeedit">‹ Voltar</button><h2>Editar plano</h2></div>
-  <div class="card soft">
-    <div class="card-h"><span class="ce">📄</span><b>Plano da nutricionista</b></div>
-    ${s.plan.pdfId ? `<p class="small">Arquivo: <b>${esc(s.plan.pdfName || 'plano.pdf')}</b></p>
-      <div class="row-btns left wrap"><button class="btn small" data-act="meals:viewpdf">Ver PDF</button>
-      <button class="btn small" data-act="meals:importpdf">Montar refeições a partir do PDF</button>
-      <button class="btn small ghost" data-act="meals:uploadpdf">Trocar PDF</button></div>`
-      : `<p class="small muted">Envie o PDF do plano. Ele fica guardado só neste aparelho, e o app sugere as refeições e opções a partir dele para você revisar.</p>
-      <div class="row-btns left wrap"><button class="btn small" data-act="meals:uploadpdf">Enviar PDF do plano</button></div>`}
-    <button class="link-btn" data-act="meals:pastetext">Ou colar/digitar o plano como texto</button>
-  </div>
-  ${meals.map((m, i) => `<div class="card edit-meal">
+function mealEditBlock(m, i, n, inSheet = false) {
+  const meals = { length: n };
+  return `<div class="card edit-meal ${inSheet ? 'in-sheet' : ''}">
     <div class="edit-row">
       <button class="emoji-pick" data-act="meals:emoji" data-m="${m.id}">${m.emoji || '🍽️'}</button>
       <input class="grow" value="${esc(m.name)}" data-change="meals:rename" data-m="${m.id}" aria-label="Nome da refeição">
@@ -110,7 +105,24 @@ function planEditor(ctx) {
       <input class="grow" id="new-${m.id}" placeholder="Nova opção…" data-change="meals:addopt" data-m="${m.id}">
       <button class="btn small" data-act="meals:addoptbtn" data-m="${m.id}">+</button>
     </div>
-  </div>`).join('')}
+  </div>`;
+}
+
+function planEditor(ctx) {
+  const s = ctx.state;
+  const meals = active(s);
+  return `<div class="subhead"><button class="btn small ghost" data-act="meals:closeedit">‹ Voltar</button><h2>Editar plano</h2></div>
+  <div class="card soft">
+    <div class="card-h"><span class="ce">📄</span><b>Plano da nutricionista</b></div>
+    ${s.plan.pdfId ? `<p class="small">Arquivo: <b>${esc(s.plan.pdfName || 'plano.pdf')}</b></p>
+      <div class="row-btns left wrap"><button class="btn small" data-act="meals:viewpdf">Ver PDF</button>
+      <button class="btn small" data-act="meals:importpdf">Montar refeições a partir do PDF</button>
+      <button class="btn small ghost" data-act="meals:uploadpdf">Trocar PDF</button></div>`
+      : `<p class="small muted">Envie o PDF do plano. Ele fica guardado só neste aparelho, e o app sugere as refeições e opções a partir dele para você revisar.</p>
+      <div class="row-btns left wrap"><button class="btn small" data-act="meals:uploadpdf">Enviar PDF do plano</button></div>`}
+    <button class="link-btn" data-act="meals:pastetext">Ou colar/digitar o plano como texto</button>
+  </div>
+  ${meals.map((m, i) => mealEditBlock(m, i, meals.length)).join('')}
   <button class="btn block ghost" data-act="meals:addmeal">+ Adicionar refeição</button>`;
 }
 
@@ -153,7 +165,7 @@ export default {
       <div class="card-h"><span class="ce">🥗</span><b>Refeições</b><span class="pill">${done}/${meals.length}</span></div>
       <div class="meal-list">${meals.map(m => {
         const e = entry(s, date, m.id);
-        const txt = e && e.free ? `🍔 ${esc(e.free)}` : e && e.opts.length ? esc(e.opts.map(o => findOpt(s, o)?.name).filter(Boolean).join(' + ')) : '<span class="muted">tocar para marcar</span>';
+        const txt = e && e.free ? `🍔 ${esc(e.free)}` : e && isDone(e) ? esc(eaten(s, e)) : '<span class="muted">tocar para marcar</span>';
         return `<button class="meal-row ${isDone(e) ? 'on' : ''}" data-act="meals:open" data-m="${m.id}">
           <span class="mr-check">${isDone(e) ? '✓' : ''}</span><span class="mr-e">${m.emoji}</span>
           <span class="mr-t"><b>${esc(m.name)}</b><small>${txt}</small></span></button>`;
@@ -171,7 +183,7 @@ export default {
     const log = ctx.state.mealLog[date]; if (!log) return '';
     const items = Object.entries(log).filter(([, e]) => isDone(e)).map(([mid, e]) => {
       const m = ctx.state.plan.meals.find(x => x.id === mid);
-      const what = e.free ? `🍔 livre: ${esc(e.free)}` : esc(e.opts.map(o => findOpt(ctx.state, o)?.name).filter(Boolean).join(' + '));
+      const what = e.free ? `🍔 livre: ${esc(e.free)}` : esc(eaten(ctx.state, e));
       return `<li><b>${esc(m ? m.name : 'Refeição')}</b>: ${what}</li>`;
     });
     return items.length ? `<div class="dd"><h4>🥗 Refeições</h4><ul>${items.join('')}</ul></div>` : '';
@@ -217,11 +229,59 @@ export default {
         <button class="btn" data-enter data-act="meals:freesave" data-m="${mid}">Salvar</button></div>`);
       ctx._mealsBack = back;
     },
+    other(ctx, el) {
+      const mid = el.dataset.m;
+      const e = entry(ctx.state, ctx.ui.date, mid);
+      const back = document.getElementById('sheet')._render;
+      ctx.sheet(`<h3>✍️ Outro</h3><p class="small muted">O que você comeu, se não estava nas opções.</p>
+        <input id="othername" maxlength="80" placeholder="ex.: cuscuz com ovo" value="${esc(e && e.other || '')}" autofocus>
+        <label class="check-line"><input type="checkbox" id="othersave"> Salvar como nova opção desta refeição</label>
+        <div class="row-btns">${e && e.other ? `<button class="btn ghost danger" data-act="meals:otherclear" data-m="${mid}">Remover</button>` : `<button class="btn ghost" data-act="app:closesheet">Cancelar</button>`}
+        <button class="btn" data-enter data-act="meals:othersave" data-m="${mid}">Salvar</button></div>`);
+      ctx._mealsBack = back;
+    },
+    othersave(ctx, el) {
+      const name = ctx.sheetVal('othername').trim();
+      if (!name) { ctx.toast('Escreva o que foi'); return; }
+      const mid = el.dataset.m;
+      const e = ensure(ctx.state, ctx.ui.date, mid);
+      e.free = '';
+      if (document.getElementById('othersave')?.checked) {
+        const m = ctx.state.plan.meals.find(x => x.id === mid);
+        const o = { id: newId('o'), name, kind: 'principal' };
+        m.options.push(o); ctx.state.plan.isExample = false;
+        e.opts = [...e.opts, o.id]; e.other = '';
+        ctx.toast('Opção adicionada ao plano');
+      } else e.other = name;
+      ctx.closeSheet();
+      if (ctx._mealsBack) { const b = ctx._mealsBack; ctx._mealsBack = null; ctx.sheet(b); }
+      ctx.save();
+    },
+    otherclear(ctx, el) {
+      const e = ensure(ctx.state, ctx.ui.date, el.dataset.m);
+      e.other = '';
+      cleanup(ctx.state, ctx.ui.date, el.dataset.m);
+      ctx.closeSheet();
+      if (ctx._mealsBack) { const b = ctx._mealsBack; ctx._mealsBack = null; ctx.sheet(b); }
+      ctx.save();
+    },
+    editmeal(ctx, el) {
+      const mid = el.dataset.m;
+      ctx.sheet(() => {
+        const m = ctx.state.plan.meals.find(x => x.id === mid);
+        if (!m || m.archived) return '<p class="muted">Refeição removida.</p><button class="btn block" data-act="app:closesheet">Fechar</button>';
+        const act = active(ctx.state);
+        return `<h3>✏️ Editar ${esc(m.name)}</h3>
+          <p class="small muted">Renomeie, troque entre principal e acompanhamento, remova ou adicione opções.</p>
+          ${mealEditBlock(m, act.indexOf(m), act.length, true)}
+          <button class="btn block" data-act="app:closesheet">Pronto</button>`;
+      }, { cls: 'tall', onClose: () => ctx.render() });
+    },
     freesave(ctx, el) {
       const name = ctx.sheetVal('freename').trim();
       if (!name) { ctx.toast('Escreva um nome curto'); return; }
       const e = ensure(ctx.state, ctx.ui.date, el.dataset.m);
-      e.free = name; e.opts = [];
+      e.free = name; e.opts = []; e.other = '';
       ctx.closeSheet();
       if (ctx._mealsBack) { const b = ctx._mealsBack; ctx._mealsBack = null; ctx.sheet(b); }
       ctx.save();
